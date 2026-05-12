@@ -48,7 +48,7 @@ When returning search results, rchive can shape the content:
 | `auto` | routes to `summary` or `chunks` automatically | general use |
 | `summary` | one-sentence conversation summary | "what did I decide about X?" |
 | `chunks` | the matched chunk text | code, technical queries |
-| `caveman` | dense stripped prose (all filler removed) — credit to the caveman writing skill from Claude Code | fast skim |
+| `caveman` | dense stripped prose (all filler removed) — credit to [juliusbrussee/caveman](https://github.com/juliusbrussee/caveman) | fast skim |
 | `full` | all messages joined | deep reading |
 
 ---
