@@ -1,5 +1,7 @@
 # rchive
 
+[![npm](https://img.shields.io/npm/v/@kaustubhdurgade/rchive)](https://www.npmjs.com/package/@kaustubhdurgade/rchive)
+
 **Local-first AI conversation archive.** Import your ChatGPT and Claude conversation exports, enrich them with topics and embeddings locally, then query your entire history as context inside Claude Code (or any MCP client), hosted all on your own machine.
 
 ---
