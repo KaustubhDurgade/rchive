@@ -9,9 +9,9 @@
 ```
 ┌─ Import ──────────────────────────────────────────────────────────┐
 │  ChatGPT .zip  ──┐                                                │
-│  Claude .zip   ──┼─▶ parser ──▶ diffAndImport ──▶ SQLite DB      │
-│                  │   (normalises to a common schema)              │
-└──────────────────┴───────────────────────────────────────────────┘
+│  Claude .zip   ──┴─▶ parser ──▶ diffAndImport ──▶ SQLite DB       │
+│                      (normalises to a common schema)              │
+└───────────────────────────────────────────────────────────────────┘
 
 ┌─ Enrich (local, background) ──────────────────────────────────────┐
 │  DB conversations (enriched=0)                                    │
@@ -21,7 +21,7 @@
 │    ──▶ store        chunks table + FTS5 virtual table             │
 │                                                                   │
 │  Conversation-level summary:                                      │
-│    qwen2.5:3b (default)  OR  Groq llama-3.1-8b (if key present)  │
+│    qwen2.5:3b (default)  OR  Groq llama-3.1-8b (if key present)   │
 └───────────────────────────────────────────────────────────────────┘
 
 ┌─ Search ──────────────────────────────────────────────────────────┐
