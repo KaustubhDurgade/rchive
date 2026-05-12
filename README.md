@@ -1,6 +1,57 @@
 # rchive
 
-**Local-first AI conversation archive.** Import your ChatGPT and Claude exports, enrich them with topics and embeddings, then query your entire history as context inside Claude Code (or any MCP client) — all on your own machine.
+**Local-first AI conversation archive.** Import your ChatGPT and Claude exports, enrich them with topics and embeddings locally, then query your entire history as context inside Claude Code (or any MCP client) — all on your own machine.
+
+---
+
+## How it works
+
+```
+┌─ Import ──────────────────────────────────────────────────────────┐
+│  ChatGPT .zip  ──┐                                                │
+│  Claude .zip   ──┼─▶ parser ──▶ diffAndImport ──▶ SQLite DB      │
+│                  │   (normalises to a common schema)              │
+└──────────────────┴───────────────────────────────────────────────┘
+
+┌─ Enrich (local, background) ──────────────────────────────────────┐
+│  DB conversations (enriched=0)                                    │
+│    ──▶ chunker      split messages into ~2 000-char chunks        │
+│    ──▶ qwen2.5:3b   extract topics · chunk summary · caveman text │
+│    ──▶ nomic-embed  384-dim embedding per chunk                   │
+│    ──▶ store        chunks table + FTS5 virtual table             │
+│                                                                   │
+│  Conversation-level summary:                                      │
+│    qwen2.5:3b (default)  OR  Groq llama-3.1-8b (if key present)  │
+└───────────────────────────────────────────────────────────────────┘
+
+┌─ Search ──────────────────────────────────────────────────────────┐
+│  query                                                            │
+│    ──▶ FTS5 full-text search        (weight 0.4)                  │
+│    ──▶ nomic-embed + sqlite-vec     (weight 0.6)                  │
+│    ──▶ merged, deduped, ranked                                    │
+│    ──▶ content shaped by compression tier                         │
+└───────────────────────────────────────────────────────────────────┘
+
+┌─ MCP server ──────────────────────────────────────────────────────┐
+│  http://localhost:3456/mcp                                        │
+│    search_archive   hybrid search, returns ranked chunks          │
+│    get_conversation full conversation by ID                       │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Compression tiers
+
+When returning search results, rchive can shape the content:
+
+| Tier | What you get | Best for |
+|------|-------------|----------|
+| `auto` | routes to `summary` or `chunks` automatically | general use |
+| `summary` | one-sentence conversation summary | "what did I decide about X?" |
+| `chunks` | the matched chunk text | code, technical queries |
+| `caveman` | dense stripped prose (all filler removed) | fast skim |
+| `full` | all messages joined | deep reading |
+
+---
 
 ## Install
 
@@ -8,7 +59,9 @@
 npm install -g rchive
 ```
 
-Node 18+ required. `better-sqlite3` and `sqlite-vec` compile native binaries on install — this takes ~30 seconds on first run.
+Node 18+ required. `better-sqlite3` and `sqlite-vec` compile native binaries on install (~30 seconds first run).
+
+---
 
 ## Quick start
 
@@ -17,14 +70,17 @@ Node 18+ required. `better-sqlite3` and `sqlite-vec` compile native binaries on 
 rchive import ~/Downloads/chatgpt-export.zip
 rchive import ~/Downloads/claude-export.zip
 
-# 2. Start the MCP server
+# 2. Enrich your conversations (run topics, embeddings, summaries)
+rchive enrich
+
+# 3. Start the MCP server
 rchive serve
 
-# 3. Check what's in your archive
-rchive status
+# 4. Open the TUI to check status, search, and configure settings
+rchive
 ```
 
-On first import rchive walks you through enrichment setup — choose a **local Ollama model** (stays 100% on your machine) or the **Groq API** (free, fast, sends chunks to Groq's servers).
+---
 
 ## Commands
 
@@ -32,64 +88,129 @@ On first import rchive walks you through enrichment setup — choose a **local O
 |---------|-------------|
 | `rchive` | Launch interactive TUI |
 | `rchive import <file.zip>` | Import a ChatGPT or Claude export ZIP |
-| `rchive serve [--port n]` | Start the MCP server (default: port 3456) |
-| `rchive enrich` | Manually run the enrichment pipeline |
-| `rchive status` | Show archive stats (conversations, chunks, DB size) |
-| `rchive sync` | (Coming soon) Pull from live provider APIs |
+| `rchive enrich` | Run the enrichment pipeline (foreground, with progress) |
+| `rchive setup` | Re-run enrichment setup (change model, add/change Groq key) |
+| `rchive serve [--port n]` | Start the MCP server (default port: 3456) |
+| `rchive status` | Print archive stats (conversations, chunks, DB size) |
 
-## MCP setup — Claude Code
+---
 
-Add to `~/.claude/claude.json` (or via `claude mcp add`):
+## Enrichment
+
+On first import, rchive walks you through setup. Everything runs **locally** by default.
+
+### What gets enriched
+
+For each chunk of each conversation:
+- **Topics** — 2–5 short keyword tags
+- **Summary** — one sentence describing the chunk
+- **Caveman** — ultra-dense rewrite, all filler stripped
+
+For each conversation:
+- **Summary** — one sentence summarising the whole conversation
+
+### Local model (default)
+
+rchive uses **Ollama** with `qwen2.5:3b` (best structured-output model at 3 B params, ~2.3 GB RAM). If you have 16 GB+ RAM it uses `qwen2.5:7b`.
+
+Minimum requirement: 4 GB RAM.
+
+```bash
+# Re-run setup to change model or switch providers
+rchive setup
+```
+
+### Optional: Groq for conversation summaries
+
+If you add a [free Groq API key](https://console.groq.com/keys), rchive uses it for the **one conversation-level summary** per conversation (not per chunk). This is fast and barely touches Groq's rate limits.
+
+Chunk enrichment (topics, caveman, chunk summaries) always runs locally regardless.
+
+You can add a Groq key at any time:
+- Run `rchive setup`, or
+- Open the TUI → Settings tab → Groq key field
+
+---
+
+## TUI
+
+Run `rchive` (no arguments) to open the terminal UI. Navigate with **Tab** / **Shift+Tab**.
+
+| Tab | What it shows |
+|-----|--------------|
+| Providers | Import history per provider |
+| Settings | Edit model, Groq key, port, compression default; reset enrichment |
+| Status | Live conversation/chunk counts, enrichment state |
+| Search | Hybrid search with expandable results |
+| MCP | Endpoint URL + ready-to-paste config snippets |
+
+**Settings screen controls:** `↑↓` to move between fields, `Enter` to edit, `S` to save.
+
+---
+
+## MCP — connecting to Claude Code
+
+```bash
+# One-time setup
+claude mcp add rchive --transport http http://localhost:3456/mcp
+
+# Start the server (keep it running in a separate terminal or use a process manager)
+rchive serve
+```
+
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "rchive": {
-      "url": "http://localhost:3456"
+      "url": "http://localhost:3456/mcp"
     }
   }
 }
 ```
 
-Run `rchive serve` before starting Claude Code. Then use naturally:
+The MCP tab in the TUI shows the exact endpoint and copy-paste snippets for all clients.
 
-```
-search my archive for X              → search_archive({ query: "X" })
-what did I decide about Y            → search_archive({ query: "Y", compression: "summary" })
-show me the full conversation about Z → search_archive → get_conversation
-```
-
-## MCP tools
+### MCP tools
 
 | Tool | Inputs | Description |
 |------|--------|-------------|
-| `search_archive` | `query`, `limit?`, `compression?` | Hybrid FTS5 + vector search across all conversations |
-| `get_conversation` | `conversation_id`, `compression?` | Retrieve a full conversation by ID |
+| `search_archive` | `query`, `limit?` (default 5), `compression?` (default `auto`) | Hybrid FTS5 + vector search |
+| `get_conversation` | `conversation_id`, `compression?` (default `full`) | Full conversation by ID |
 
-**Compression tiers:** `auto` (default) · `summary` · `chunks` · `caveman` · `full`
+Use naturally in Claude Code:
+```
+search my archive for X                  → search_archive({ query: "X" })
+what did I decide about Y                → search_archive({ query: "Y", compression: "summary" })
+show me the full conversation about Z    → search_archive → get_conversation
+```
 
-`auto` routes to `summary` for decision/overview queries and `chunks` for code/technical queries.
+---
 
 ## Exporting your chat history
 
-| Provider | How to export |
-|----------|--------------|
+| Provider | Steps |
+|----------|-------|
 | ChatGPT  | Settings → Data Controls → Export data → download ZIP |
 | Claude   | Settings → Privacy → Export data → download ZIP |
-| Gemini   | Not yet supported (no public conversation history API) |
+| Gemini   | Not yet supported — no public conversation history API |
 
-## Privacy
+---
 
-All data lives in `~/.rchive/rchive.db` on your machine. Enrichment options:
+## Data & privacy
 
-- **Ollama (recommended)** — runs a local LLM (phi3.5 / llama3.2 depending on RAM). Nothing leaves your machine.
-- **Groq API** — sends conversation chunks to Groq for enrichment. Fast and free, but requires a [Groq API key](https://console.groq.com/keys).
+All data lives in `~/.rchive/rchive.db`. The config is at `~/.rchive/config.json`.
 
-You choose during first-run setup. You can switch at any time by running `rchive enrich` and reconfiguring.
+Chunk enrichment (the high-volume work) **always runs locally** via Ollama — no conversation content ever leaves your machine by default. The optional Groq key is used only for one short summary per conversation.
+
+---
 
 ## Tech stack
 
-TypeScript · SQLite (better-sqlite3) · FTS5 · sqlite-vec · @xenova/transformers · Ollama · Groq · ink TUI · MCP SDK
+TypeScript · SQLite (`better-sqlite3`) · FTS5 · `sqlite-vec` · `@xenova/transformers` (nomic-embed-text-v1) · Ollama (`qwen2.5`) · Groq SDK · ink TUI · MCP SDK (`@modelcontextprotocol/sdk`)
+
+---
 
 ## Contributing
 

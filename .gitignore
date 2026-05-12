@@ -5,6 +5,6 @@ dist/
 *.db-shm
 *.db-wal
 config.json
-~/.rchive/
 *.tgz
 .npmrc
+TESTING.md

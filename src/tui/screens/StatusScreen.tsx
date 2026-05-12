@@ -23,6 +23,12 @@ function formatRelativeTime(unixTs: number | null): string {
   return `${Math.floor(diffSec / 86400)}d ago`
 }
 
+function progressBar(done: number, total: number, width = 20): string {
+  if (total === 0) return ''
+  const filled = Math.round((done / total) * width)
+  return '█'.repeat(filled) + '░'.repeat(width - filled)
+}
+
 export function StatusScreen(): React.JSX.Element {
   const [tick, setTick] = useState(0)
 
@@ -31,31 +37,56 @@ export function StatusScreen(): React.JSX.Element {
     return () => clearInterval(id)
   }, [])
 
+  // tick dependency forces re-read on each interval
+  void tick
+
   const db = getDb()
   const config = getConfig()
   const providerStats = getProviderStats(db)
   const totals = getTotalStats(db)
+
+  const totalConvs = providerStats.reduce((s, r) => s + r.total, 0)
+  const totalPending = providerStats.reduce((s, r) => s + r.pending, 0)
+  const enriched = totalConvs - totalPending
+  const enrichPct = totalConvs > 0 ? Math.round((enriched / totalConvs) * 100) : 100
+  const isEnriching = totalPending > 0
 
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Text bold>Status</Text>
 
       <Box marginTop={1} flexDirection="column">
+        {providerStats.length === 0 && (
+          <Text dimColor>No conversations imported yet.</Text>
+        )}
         {providerStats.map((row) => (
           <Box key={row.provider} flexDirection="row" marginBottom={0}>
-            <Box width={10}><Text bold>{row.provider}</Text></Box>
+            <Box width={12}><Text bold>{row.provider}</Text></Box>
             <Box width={8}><Text>{String(row.total)}</Text></Box>
             <Box width={14}><Text dimColor>{formatRelativeTime(row.last_imported_at)}</Text></Box>
             <Text color={row.pending === 0 ? 'green' : 'yellow'}>
-              {row.pending === 0 ? '✓' : `${row.pending} pending`}
+              {row.pending === 0 ? '✓ enriched' : `${row.pending} pending`}
             </Text>
           </Box>
         ))}
       </Box>
 
+      {totalConvs > 0 && (
+        <Box marginTop={1} flexDirection="column">
+          <Box flexDirection="row">
+            <Text color={isEnriching ? 'yellow' : 'green'}>
+              {progressBar(enriched, totalConvs)}
+            </Text>
+            <Text> {enrichPct}%</Text>
+            {isEnriching && <Text color="yellow">  enriching…</Text>}
+          </Box>
+          <Text dimColor>{enriched.toLocaleString()} / {totalConvs.toLocaleString()} enriched</Text>
+        </Box>
+      )}
+
       <Box marginTop={1} flexDirection="column">
         <Text>{totals.conversations.toLocaleString()} conversations · {totals.chunks.toLocaleString()} chunks · {getDbSizeMb()}</Text>
-        <Text>Enrichment: <Text color="cyan">{config.enrichmentProvider ?? 'not configured'}{config.ollamaModel ? ` (${config.ollamaModel})` : ''}</Text></Text>
+        <Text>Model: <Text color="cyan">{config.ollamaModel ?? 'not configured'}</Text></Text>
         <Text dimColor>MCP: localhost:{config.mcpPort}</Text>
       </Box>
 

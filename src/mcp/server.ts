@@ -50,6 +50,14 @@ export async function startMcpServer(port?: number): Promise<void> {
   const db = getDb()
 
   const httpServer = http.createServer(async (req, res) => {
+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname
+
+    if (pathname !== '/mcp') {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'Not found. MCP endpoint is /mcp' }))
+      return
+    }
+
     if (req.method !== 'POST' && req.method !== 'GET' && req.method !== 'DELETE') {
       res.writeHead(405, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'Method not allowed' }))
@@ -72,7 +80,7 @@ export async function startMcpServer(port?: number): Promise<void> {
   })
 
   httpServer.listen(listenPort, 'localhost', () => {
-    console.log(`rchive MCP server running on localhost:${listenPort}`)
+    console.log(`rchive MCP server running on http://localhost:${listenPort}/mcp`)
   })
 
   process.on('SIGINT', () => { httpServer.close(); process.exit(0) })

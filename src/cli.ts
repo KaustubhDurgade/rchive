@@ -11,6 +11,14 @@ import { parseChatGPTZip } from './parsers/chatgpt.js'
 import { parseClaudeZip } from './parsers/claude.js'
 import { NormalizedConversation } from './types.js'
 
+// Shared readline instance — creating a new interface per prompt closes stdin between calls.
+let _rl: readline.Interface | null = null
+function prompt(question: string): Promise<string> {
+  if (!_rl) _rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve) => _rl!.question(question, resolve))
+}
+function closePrompt(): void { _rl?.close(); _rl = null }
+
 const program = new Command()
 program.name('rchive').description('Local-first AI conversation archive').version('1.0.0')
 
@@ -47,13 +55,22 @@ program
       console.log(chalk.gray('Source file deleted.'))
     }
 
-    // Kick off enrichment non-blocking
-    setImmediate(async () => {
-      const { runEnrichmentPipeline } = await import('./enrichment/pipeline.js')
-      runEnrichmentPipeline(false).catch((err: Error) =>
-        console.error('[enrichment] Pipeline error:', err.message)
-      )
-    })
+    closePrompt()
+
+    if (stats.newCount > 0 || stats.updatedCount > 0) {
+      console.log(chalk.gray('Run ' + chalk.bold('rchive enrich') + ' to process new conversations.')  )
+    }
+  })
+
+// --- setup ---
+program
+  .command('setup')
+  .description('Re-run enrichment provider setup (change model, add Groq key, etc.)')
+  .action(async () => {
+    const { getConfig, saveConfig } = await import('./config.js')
+    saveConfig({ ...getConfig(), enrichmentAcknowledged: false, enrichmentProvider: null })
+    const { runFirstTimeSetup } = await import('./enrichment/setup.js')
+    await runFirstTimeSetup()
   })
 
 // --- enrich ---
@@ -83,6 +100,34 @@ program
   .action(async () => {
     const { printStatus } = await import('./cli/status.js')
     await printStatus()
+  })
+
+// --- reset ---
+program
+  .command('reset')
+  .description('Wipe the database (keeps enrichment config and API keys)')
+  .action(async () => {
+    const answer = await prompt(
+      chalk.red('This deletes ALL conversations, chunks, and search index. Type "yes" to confirm: ')
+    )
+    if (answer.trim().toLowerCase() !== 'yes') {
+      console.log('Aborted.')
+      closePrompt()
+      return
+    }
+    closePrompt()
+    const { getDb, getDbPath } = await import('./db/schema.js')
+    const db = getDb()
+    db.exec(`
+      DELETE FROM chunks_fts;
+      DELETE FROM chunks;
+      DELETE FROM messages;
+      DELETE FROM conversations;
+    `)
+    const { getConfig, saveConfig } = await import('./config.js')
+    saveConfig({ ...getConfig(), providers: {} })
+    console.log(chalk.green('✓ Database wiped. Enrichment config and API keys kept.'))
+    console.log(chalk.gray(`DB: ${getDbPath()}`))
   })
 
 // --- sync ---
@@ -130,9 +175,4 @@ function detectAndParse(filePath: string): NormalizedConversation[] {
     return parseChatGPTZip(filePath)
   }
   throw new Error(`Unsupported file type: ${ext}. Provide a .zip export from ChatGPT or Claude.`)
-}
-
-function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  return new Promise((resolve) => rl.question(question, (ans) => { rl.close(); resolve(ans) }))
 }
