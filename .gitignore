@@ -6,3 +6,5 @@ dist/
 *.db-wal
 config.json
 ~/.rchive/
+*.tgz
+.npmrc
