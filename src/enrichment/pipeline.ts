@@ -83,7 +83,16 @@ export async function runEnrichmentPipeline(foreground: boolean, skipSetup = fal
   }
 
   const resolvedApiKey = config.enrichmentProvider === 'api' ? await getEnrichmentApiKey() : ''
+  const rpm = config.enrichmentProvider === 'api' ? (config.enrichmentRpm ?? 20) : 0
   const total = pending.length
+
+  if (foreground && config.enrichmentProvider === 'api' && rpm > 0) {
+    const estCalls = total * 6  // ~5 chunks + 1 summary per conversation on average
+    const estMinutes = Math.ceil(estCalls / rpm)
+    const estHours = (estMinutes / 60).toFixed(1)
+    log(`Starting enrichment: ${total} conversations (~${estCalls} API calls at ${rpm} RPM ≈ ${estMinutes < 120 ? estMinutes + ' min' : estHours + ' hrs'})`)
+  }
+
   const spinner = foreground ? ora('Starting…').start() : null
   let done = 0
 
@@ -91,7 +100,7 @@ export async function runEnrichmentPipeline(foreground: boolean, skipSetup = fal
     for (const conv of pending) {
       const title = trunc(conv.title ?? conv.id, 40)
       try {
-        await enrichOne(db, conv.id, config, log, resolvedApiKey, (chunkDone, chunkTotal) => {
+        await enrichOne(db, conv.id, config, log, resolvedApiKey, rpm, (chunkDone, chunkTotal) => {
           if (!spinner) return
           const convBar = bar(done, total, 20)
           const chunkBar = bar(chunkDone, chunkTotal, 12)
@@ -127,6 +136,7 @@ async function enrichOne(
   config: ReturnType<typeof getConfig>,
   log: (msg: string) => void,
   apiKey: string,
+  rpm: number,
   onChunkProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const rows = getMessagesByConversationId(db, conversationId)
@@ -153,7 +163,7 @@ async function enrichOne(
   if (!existingSummary) {
     let convSummary: string
     if (useApi) {
-      convSummary = await summarizeConversationApi(chunks, apiKey, baseUrl, apiModel)
+      convSummary = await summarizeConversationApi(chunks, apiKey, baseUrl, apiModel, rpm)
     } else {
       const groqKey = await getGroqKey()
       convSummary = groqKey
@@ -174,7 +184,7 @@ async function enrichOne(
     onChunkProgress?.(i, chunks.length)
     const [enriched, embedding] = await Promise.all([
       useApi
-        ? enrichChunkApi(chunks[i], apiKey, baseUrl, apiModel)
+        ? enrichChunkApi(chunks[i], apiKey, baseUrl, apiModel, rpm)
         : enrichChunkOllama(chunks[i], ollamaModel),
       embed(chunks[i]),
     ])

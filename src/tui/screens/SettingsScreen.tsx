@@ -9,11 +9,11 @@ const COMPRESSION_TIERS: CompressionTier[] = ['auto', 'summary', 'chunks', 'cave
 const ENRICH_MODES: EnrichmentProvider[] = ['api', 'ollama']
 
 type OllamaRow  = 'compression' | 'enrichMode' | 'ollamaModel' | 'port' | 'reEnrich'
-type ApiRow     = 'compression' | 'enrichMode' | 'apiBaseUrl'  | 'apiKey' | 'apiModel' | 'port' | 'reEnrich'
+type ApiRow     = 'compression' | 'enrichMode' | 'apiBaseUrl'  | 'apiKey' | 'apiModel' | 'apiRpm' | 'port' | 'reEnrich'
 type Row = OllamaRow | ApiRow
 
 const ROWS_OLLAMA: OllamaRow[] = ['compression', 'enrichMode', 'ollamaModel', 'port', 'reEnrich']
-const ROWS_API: ApiRow[]       = ['compression', 'enrichMode', 'apiBaseUrl', 'apiKey', 'apiModel', 'port', 'reEnrich']
+const ROWS_API: ApiRow[]       = ['compression', 'enrichMode', 'apiBaseUrl', 'apiKey', 'apiModel', 'apiRpm', 'port', 'reEnrich']
 
 interface Props {
   onLock: () => void
@@ -42,6 +42,7 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
   const [apiBaseUrl, setApiBaseUrl] = useState(config.enrichmentApiBaseUrl ?? '')
   const [apiKey, setApiKey] = useState('')          // never pre-fill from config (keytar)
   const [apiModel, setApiModel] = useState(config.enrichmentApiModel ?? '')
+  const [apiRpm, setApiRpm] = useState(String(config.enrichmentRpm ?? 20))
   const [port, setPort] = useState(String(config.mcpPort))
 
   const [saved, setSaved] = useState(false)
@@ -71,6 +72,7 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
       ollamaModel: enrichMode === 'ollama' ? (ollamaModel || null) : getConfig().ollamaModel,
       enrichmentApiBaseUrl: apiBaseUrl,
       enrichmentApiModel: apiModel,
+      enrichmentRpm: parseInt(apiRpm, 10) || 20,
       mcpPort: Number.isFinite(parsed) ? parsed : config.mcpPort,
       enrichmentAcknowledged: true,
     })
@@ -191,6 +193,13 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
               {editingRow === 'apiModel'
                 ? <TextInput value={apiModel} onChange={setApiModel} onSubmit={finishEdit} focus={true} />
                 : <Text color={apiModel ? 'cyan' : 'gray'}>{apiModel || 'not set'}</Text>
+              }
+            </Box>
+            <Box flexDirection="row" marginBottom={1}>
+              {pfx(5)}{lbl(5, 'Rate limit')}
+              {editingRow === 'apiRpm'
+                ? <TextInput value={apiRpm} onChange={setApiRpm} onSubmit={finishEdit} focus={true} />
+                : <Text color="cyan">{apiRpm} <Text dimColor>req/min</Text></Text>
               }
             </Box>
           </>

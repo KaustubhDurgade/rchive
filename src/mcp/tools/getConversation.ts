@@ -35,13 +35,19 @@ export async function handleGetConversation(
       messages = getMessagesByConversationId(db, input.conversation_id)
     }
 
-    return {
+    const result: ConversationResult = {
       conversation_id: conv.id,
       title: conv.title ?? '',
       provider: conv.provider,
       created_at: conv.created_at ?? 0,
       messages,
     }
+
+    if (!conv.enriched) {
+      result._note = 'This conversation has not been enriched yet. Content may be long. Extract only what is relevant and summarize before adding to your context window.'
+    }
+
+    return result
   } catch (err) {
     console.error('[mcp] get_conversation error:', (err as Error).message)
     return { error: (err as Error).message }
@@ -54,4 +60,5 @@ interface ConversationResult {
   provider: string
   created_at: number
   messages: { role: string; content: string; created_at: number }[]
+  _note?: string
 }

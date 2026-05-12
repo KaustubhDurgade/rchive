@@ -19,6 +19,7 @@ export interface RchiveConfig {
   enrichmentApiKey: string
   enrichmentApiBaseUrl: string
   enrichmentApiModel: string
+  enrichmentRpm: number
   providers: {
     gemini?: {
       accessToken: string
@@ -45,6 +46,7 @@ const DEFAULTS: RchiveConfig = {
   enrichmentApiKey: '',
   enrichmentApiBaseUrl: '',
   enrichmentApiModel: '',
+  enrichmentRpm: 20,
   providers: {},
 }
 

@@ -25,13 +25,13 @@ function getRamGb(): number {
   return os.totalmem() / 1024 / 1024 / 1024
 }
 
-export const PROVIDER_PRESETS: { name: string; baseUrl: string; model: string }[] = [
-  { name: 'OpenAI',      baseUrl: 'https://api.openai.com/v1',                                model: 'gpt-4o-mini' },
-  { name: 'Groq',        baseUrl: 'https://api.groq.com/openai/v1',                            model: 'llama-3.3-70b-versatile' },
-  { name: 'Gemini',      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',  model: 'gemini-2.0-flash' },
-  { name: 'OpenRouter',  baseUrl: 'https://openrouter.ai/api/v1',                              model: 'google/gemini-flash-1.5' },
-  { name: 'Together AI', baseUrl: 'https://api.together.xyz/v1',                               model: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo' },
-  { name: 'Custom',      baseUrl: '',                                                           model: '' },
+export const PROVIDER_PRESETS: { name: string; baseUrl: string; model: string; defaultRpm: number }[] = [
+  { name: 'OpenAI',      baseUrl: 'https://api.openai.com/v1',                                model: 'gpt-4o-mini',                                    defaultRpm: 20 },
+  { name: 'Groq',        baseUrl: 'https://api.groq.com/openai/v1',                            model: 'llama-3.3-70b-versatile',                        defaultRpm: 25 },
+  { name: 'Gemini',      baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',  model: 'gemini-2.0-flash',                               defaultRpm: 12 },
+  { name: 'OpenRouter',  baseUrl: 'https://openrouter.ai/api/v1',                              model: 'google/gemini-flash-1.5',                        defaultRpm: 20 },
+  { name: 'Together AI', baseUrl: 'https://api.together.xyz/v1',                               model: 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',   defaultRpm: 40 },
+  { name: 'Custom',      baseUrl: '',                                                           model: '',                                               defaultRpm: 20 },
 ]
 
 async function setupApiProvider(): Promise<boolean> {
@@ -72,15 +72,23 @@ async function setupApiProvider(): Promise<boolean> {
   }
   spinner.succeed('API key valid.')
 
+  const rpmDefault = preset.defaultRpm
+  console.log(chalk.gray(`\nRate limit: how many API requests per minute? (protects against accidental large bills)`))
+  console.log(chalk.gray(`Suggested for ${preset.name}: ${rpmDefault} RPM`))
+  const rpmInput = await prompt(`RPM [${rpmDefault}]: `)
+  const rpm = parseInt(rpmInput.trim(), 10)
+  const resolvedRpm = Number.isFinite(rpm) && rpm > 0 ? rpm : rpmDefault
+
   await saveEnrichmentApiKey(apiKey)
   saveConfig({
     ...getConfig(),
     enrichmentProvider: 'api',
     enrichmentApiBaseUrl: baseUrl,
     enrichmentApiModel: model,
+    enrichmentRpm: resolvedRpm,
     enrichmentAcknowledged: true,
   })
-  console.log(chalk.green(`✓ API enrichment ready (${preset.name} · ${model}).`))
+  console.log(chalk.green(`✓ API enrichment ready (${preset.name} · ${model} · ${resolvedRpm} RPM).`))
   return true
 }
 
