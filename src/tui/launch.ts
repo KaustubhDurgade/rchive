@@ -1,4 +1,8 @@
-// Implemented in Phase 13
+import React from 'react'
+import { render } from 'ink'
+import { App } from './App'
+
 export async function launchTui(): Promise<void> {
-  console.log('TUI — implemented in Phase 13')
+  const { waitUntilExit } = render(React.createElement(App))
+  await waitUntilExit()
 }
