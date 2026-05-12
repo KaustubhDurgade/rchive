@@ -1,6 +1,8 @@
 # rchive
 
 [![npm](https://img.shields.io/npm/v/@kaustubhdurgade/rchive)](https://www.npmjs.com/package/@kaustubhdurgade/rchive)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
 **Local-first AI conversation archive.** Import your ChatGPT and Claude conversation exports, enrich them with topics and embeddings locally, then query your entire history as context inside Claude Code (or any MCP client), hosted all on your own machine.
 
@@ -111,26 +113,31 @@ For each chunk of each conversation:
 For each conversation:
 - **Summary** — one sentence summarising the whole conversation
 
-### Local model (default)
+### Option 1 — Bring your own API key (fast)
 
-rchive uses **Ollama** with `qwen2.5:3b` (best structured-output model at 3 B params, ~2.3 GB RAM). If you have 16 GB+ RAM it uses `qwen2.5:7b`.
+Use any OpenAI-compatible provider. rchive walks you through setup and asks for a **rate limit** (requests per minute) to protect against accidental large bills.
+
+| Provider | Free tier | Suggested RPM |
+|----------|-----------|--------------|
+| [Groq](https://console.groq.com/keys) | ✅ Free | 25 |
+| [Gemini](https://aistudio.google.com/apikey) | ✅ Free | 12 |
+| [OpenRouter](https://openrouter.ai) | ✅ Free tier | 20 |
+| [Together AI](https://api.together.xyz) | pay-as-you-go | 40 |
+| OpenAI | pay-as-you-go | 20 |
+| Custom (any OpenAI-compatible URL) | — | 20 |
+
+> Claude users: use OpenRouter with your Anthropic credits — it's OpenAI-compatible.
+
+### Option 2 — Local Ollama (private)
+
+rchive uses **Ollama** with `qwen2.5:3b` by default (~2.3 GB RAM). Faster on Apple Silicon (Metal GPU); slow on CPU-only machines.
 
 Minimum requirement: 4 GB RAM.
 
 ```bash
-# Re-run setup to change model or switch providers
+# Re-run setup to switch providers or change model
 rchive setup
 ```
-
-### Optional: Groq for conversation summaries
-
-If you add a [free Groq API key](https://console.groq.com/keys), rchive uses it for the **one conversation-level summary** per conversation (not per chunk). This is fast and barely touches Groq's rate limits.
-
-Chunk enrichment (topics, caveman, chunk summaries) always runs locally regardless.
-
-You can add a Groq key at any time:
-- Run `rchive setup`, or
-- Open the TUI → Settings tab → Groq key field
 
 ---
 

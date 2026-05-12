@@ -8,3 +8,4 @@ config.json
 *.tgz
 .npmrc
 TESTING.md
+HANDOFF.md
