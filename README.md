@@ -56,7 +56,7 @@ When returning search results, rchive can shape the content:
 ## Install
 
 ```bash
-npm install -g rchive
+npm install -g @kaustubhdurgade/rchive
 ```
 
 Node 18+ required. `better-sqlite3` and `sqlite-vec` compile native binaries on install (~30 seconds first run).
