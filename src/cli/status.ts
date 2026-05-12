@@ -17,7 +17,8 @@ function formatRelativeTime(unixTs: number | null): string {
 function getDbSizeMb(): string {
   try {
     const stat = fs.statSync(getDbPath())
-    return (stat.size / 1024 / 1024).toFixed(0) + 'MB'
+    const mb = stat.size / 1024 / 1024
+    return mb < 1 ? '<1 MB' : `${mb.toFixed(0)} MB`
   } catch {
     return 'unknown'
   }
