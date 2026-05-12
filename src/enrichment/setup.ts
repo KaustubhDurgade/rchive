@@ -58,8 +58,12 @@ async function installOllama(): Promise<boolean> {
       execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe' })
     }
     spinner.succeed('Ollama installed.')
-    spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref()
-    return await waitForOllama()
+    if (platform === 'darwin') {
+      execSync('brew services start ollama', { stdio: 'pipe' })
+    } else {
+      spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref()
+    }
+    return await waitForOllama(30000)
   } catch (err) {
     spinner.fail('Ollama installation failed.')
     console.error((err as Error).message)

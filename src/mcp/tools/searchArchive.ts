@@ -35,10 +35,10 @@ export async function handleSearchArchive(
             .join('\n')
         } else if (compression === 'summary') {
           const row = db.prepare('SELECT compression_summary FROM chunks WHERE id = ?').get(r.chunk_id) as { compression_summary: string } | undefined
-          content = row?.compression_summary ?? r.content
+          content = row?.compression_summary || r.content
         } else if (compression === 'caveman') {
           const row = db.prepare('SELECT caveman_content FROM chunks WHERE id = ?').get(r.chunk_id) as { caveman_content: string } | undefined
-          content = row?.caveman_content ?? r.content
+          content = row?.caveman_content || r.content
         }
 
         return {
