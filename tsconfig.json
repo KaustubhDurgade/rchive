@@ -11,5 +11,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "jsx": "react"
-  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["tests/**/*", "node_modules", "dist"]
 }
