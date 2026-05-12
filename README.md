@@ -1,6 +1,6 @@
 # rchive
 
-**Local-first AI conversation archive.** Import your ChatGPT and Claude exports, enrich them with topics and embeddings locally, then query your entire history as context inside Claude Code (or any MCP client) — all on your own machine.
+**Local-first AI conversation archive.** Import your ChatGPT and Claude conversation exports, enrich them with topics and embeddings locally, then query your entire history as context inside Claude Code (or any MCP client), hosted all on your own machine.
 
 ---
 
