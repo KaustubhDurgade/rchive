@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import { randomUUID } from 'crypto'
-import { NormalizedConversation, NormalizedMessage, Provider } from '../types'
+import { NormalizedConversation, NormalizedMessage, Provider } from '../types.js'
 
 const uuidv4 = randomUUID
 

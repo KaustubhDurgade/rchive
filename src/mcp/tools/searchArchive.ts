@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { z } from 'zod'
-import { hybridSearch } from '../../search/hybrid'
-import { getMessagesByConversationId } from '../../db/queries'
+import { hybridSearch } from '../../search/hybrid.js'
+import { getMessagesByConversationId } from '../../db/queries.js'
 
 const DECISION_TERMS = /decide|decision|summary|overview|what did i|chose|choice|conclusion/i
 const CODE_TERMS = /code|function|class|bug|error|import|library|api|typescript|python|javascript|sql|config/i

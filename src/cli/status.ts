@@ -1,9 +1,9 @@
 import Table from 'cli-table3'
 import chalk from 'chalk'
 import fs from 'fs'
-import { getDb, getDbPath } from '../db/schema'
-import { getProviderStats, getTotalStats } from '../db/queries'
-import { getConfig } from '../config'
+import { getDb, getDbPath } from '../db/schema.js'
+import { getProviderStats, getTotalStats } from '../db/queries.js'
+import { getConfig } from '../config.js'
 
 function formatRelativeTime(unixTs: number | null): string {
   if (!unixTs) return 'never'

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
-import { getConfig, saveConfig, CompressionTier } from '../../config'
+import { getConfig, saveConfig, CompressionTier } from '../../config.js'
 
 const COMPRESSION_TIERS: CompressionTier[] = ['auto', 'summary', 'chunks', 'caveman', 'full']
 

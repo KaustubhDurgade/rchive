@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip'
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-import { parseChatGPTZip } from '../src/parsers/chatgpt'
+import { parseChatGPTZip } from '../src/parsers/chatgpt.js'
 
 function buildFixtureZip(conversations: unknown[]): string {
   const zip = new AdmZip()

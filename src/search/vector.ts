@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
-import { embed } from '../enrichment/embeddings'
-import { ChunkResult } from './fts'
+import { embed } from '../enrichment/embeddings.js'
+import { ChunkResult } from './fts.js'
 
 export async function vectorSearch(
   db: Database.Database,

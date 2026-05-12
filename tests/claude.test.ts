@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip'
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-import { parseClaudeZip } from '../src/parsers/claude'
+import { parseClaudeZip } from '../src/parsers/claude.js'
 
 function buildZip(files: Record<string, unknown>): string {
   const zip = new AdmZip()

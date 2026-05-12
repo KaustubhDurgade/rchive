@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
 import TextInput from 'ink-text-input'
-import { getDb } from '../../db/schema'
-import { hybridSearch, SearchResult } from '../../search/hybrid'
-import { getConfig } from '../../config'
+import { getDb } from '../../db/schema.js'
+import { hybridSearch, SearchResult } from '../../search/hybrid.js'
+import { getConfig } from '../../config.js'
 
 export function QueryScreen(): React.JSX.Element {
   const [query, setQuery] = useState('')

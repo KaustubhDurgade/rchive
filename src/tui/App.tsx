@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
-import { AuthScreen } from './screens/AuthScreen'
-import { SettingsScreen } from './screens/SettingsScreen'
-import { StatusScreen } from './screens/StatusScreen'
-import { QueryScreen } from './screens/QueryScreen'
+import { AuthScreen } from './screens/AuthScreen.js'
+import { SettingsScreen } from './screens/SettingsScreen.js'
+import { StatusScreen } from './screens/StatusScreen.js'
+import { QueryScreen } from './screens/QueryScreen.js'
 
 type Screen = 'auth' | 'settings' | 'status' | 'query'
 const SCREENS: Screen[] = ['auth', 'settings', 'status', 'query']

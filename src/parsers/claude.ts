@@ -1,5 +1,5 @@
 import AdmZip from 'adm-zip'
-import { NormalizedConversation, NormalizedMessage } from '../types'
+import { NormalizedConversation, NormalizedMessage } from '../types.js'
 
 interface ClaudeChatMessage {
   uuid: string

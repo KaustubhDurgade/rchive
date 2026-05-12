@@ -4,11 +4,12 @@ import path from 'path'
 import fs from 'fs'
 import readline from 'readline'
 import chalk from 'chalk'
-import { getDb } from './db/schema'
-import { diffAndImport } from './db/diff'
-import { parseChatGPTZip } from './parsers/chatgpt'
-import { parseClaudeZip } from './parsers/claude'
-import { NormalizedConversation } from './types'
+import AdmZip from 'adm-zip'
+import { getDb } from './db/schema.js'
+import { diffAndImport } from './db/diff.js'
+import { parseChatGPTZip } from './parsers/chatgpt.js'
+import { parseClaudeZip } from './parsers/claude.js'
+import { NormalizedConversation } from './types.js'
 
 const program = new Command()
 program.name('rchive').description('Local-first AI conversation archive').version('1.0.0')
@@ -48,7 +49,7 @@ program
 
     // Kick off enrichment non-blocking
     setImmediate(async () => {
-      const { runEnrichmentPipeline } = await import('./enrichment/pipeline')
+      const { runEnrichmentPipeline } = await import('./enrichment/pipeline.js')
       runEnrichmentPipeline(false).catch((err: Error) =>
         console.error('[enrichment] Pipeline error:', err.message)
       )
@@ -60,7 +61,7 @@ program
   .command('enrich')
   .description('Manually trigger enrichment pass')
   .action(async () => {
-    const { runEnrichmentPipeline } = await import('./enrichment/pipeline')
+    const { runEnrichmentPipeline } = await import('./enrichment/pipeline.js')
     await runEnrichmentPipeline(true)
   })
 
@@ -70,7 +71,7 @@ program
   .description('Start MCP server')
   .option('-p, --port <n>', 'Port number')
   .action(async (opts: { port?: string }) => {
-    const { startMcpServer } = await import('./mcp/server')
+    const { startMcpServer } = await import('./mcp/server.js')
     const port = opts.port ? parseInt(opts.port, 10) : undefined
     await startMcpServer(port)
   })
@@ -80,7 +81,7 @@ program
   .command('status')
   .description('Print DB stats')
   .action(async () => {
-    const { printStatus } = await import('./cli/status')
+    const { printStatus } = await import('./cli/status.js')
     await printStatus()
   })
 
@@ -98,13 +99,13 @@ program
   .command('ui')
   .description('Launch TUI')
   .action(async () => {
-    const { launchTui } = await import('./tui/launch')
+    const { launchTui } = await import('./tui/launch.js')
     await launchTui()
   })
 
 // Default action: launch TUI
 program.action(async () => {
-  const { launchTui } = await import('./tui/launch')
+  const { launchTui } = await import('./tui/launch.js')
   await launchTui()
 })
 
@@ -115,7 +116,6 @@ function detectAndParse(filePath: string): NormalizedConversation[] {
   if (ext === '.zip') {
     // Try Claude first (has chat_messages field), then ChatGPT
     try {
-      const AdmZip = require('adm-zip')
       const zip = new AdmZip(filePath)
       const mainEntry = zip.getEntry('conversations.json')
       if (mainEntry) {

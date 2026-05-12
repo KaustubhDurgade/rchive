@@ -1,4 +1,4 @@
-import { EnrichmentResult } from './groq'
+import { EnrichmentResult } from './groq.js'
 
 const SYSTEM_PROMPT = `You are a data enrichment assistant. You will receive a chunk of an AI conversation.
 Respond ONLY with a valid JSON object. No preamble. No explanation. No markdown fences.

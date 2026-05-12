@@ -2,10 +2,10 @@ import http from 'http'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
-import { getDb } from '../db/schema'
-import { getConfig } from '../config'
-import { handleSearchArchive, searchArchiveSchema } from './tools/searchArchive'
-import { handleGetConversation, getConversationSchema } from './tools/getConversation'
+import { getDb } from '../db/schema.js'
+import { getConfig } from '../config.js'
+import { handleSearchArchive, searchArchiveSchema } from './tools/searchArchive.js'
+import { handleGetConversation, getConversationSchema } from './tools/getConversation.js'
 
 export async function startMcpServer(port?: number): Promise<void> {
   const config = getConfig()

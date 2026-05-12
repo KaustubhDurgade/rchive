@@ -3,8 +3,8 @@ import { execSync, spawn } from 'child_process'
 import readline from 'readline'
 import chalk from 'chalk'
 import ora from 'ora'
-import { getConfig, saveConfig, saveGroqKey, EnrichmentProvider } from '../config'
-import { isOllamaRunning } from './ollama'
+import { getConfig, saveConfig, saveGroqKey, EnrichmentProvider } from '../config.js'
+import { isOllamaRunning } from './ollama.js'
 
 const OLLAMA_TEST_URL = 'http://localhost:11434/api/tags'
 
