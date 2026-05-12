@@ -174,16 +174,82 @@ The MCP tab in the TUI shows the exact endpoint and copy-paste snippets for all 
 
 ### MCP tools
 
-| Tool | Inputs | Description |
-|------|--------|-------------|
-| `search_archive` | `query`, `limit?` (default 5), `compression?` (default `auto`) | Hybrid FTS5 + vector search |
-| `get_conversation` | `conversation_id`, `compression?` (default `full`) | Full conversation by ID |
+#### `search_archive`
 
-Use naturally in Claude Code:
+Hybrid FTS5 + vector search across all enriched conversations.
+
+**Input**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `query` | `string` | required | Search query in natural language |
+| `limit` | `number` | `5` | Number of results to return |
+| `compression` | `"auto" \| "summary" \| "chunks" \| "caveman" \| "full"` | `"auto"` | Content shape (see compression tiers above) |
+
+`auto` routing: queries matching decision/overview keywords (`decide`, `chose`, `conclusion`, etc.) resolve to `summary`; code/technical keywords (`function`, `bug`, `api`, `typescript`, etc.) resolve to `chunks`; everything else defaults to `chunks`.
+
+**Response**
+
+```json
+{
+  "results": [
+    {
+      "chunk_id": "abc123",
+      "conversation_id": "conv-456",
+      "conversation_title": "Debugging my auth flow",
+      "provider": "chatgpt",
+      "created_at": 1700000000,
+      "content": "...",
+      "topics": ["auth", "jwt", "typescript"],
+      "relevance_score": 0.87
+    }
+  ]
+}
+```
+
+On error: `{ "error": "message", "results": [] }`
+
+---
+
+#### `get_conversation`
+
+Retrieve a full conversation by ID (obtained from `search_archive` results).
+
+**Input**
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `conversation_id` | `string` | required | ID from a `search_archive` result |
+| `compression` | `"summary" \| "chunks" \| "caveman" \| "full"` | `"full"` | Content shape |
+
+**Response**
+
+```json
+{
+  "conversation_id": "conv-456",
+  "title": "Debugging my auth flow",
+  "provider": "chatgpt",
+  "created_at": 1700000000,
+  "messages": [
+    { "role": "user",      "content": "Why is my JWT expiring early?", "created_at": 1700000010 },
+    { "role": "assistant", "content": "This is usually caused by...",  "created_at": 1700000020 }
+  ]
+}
+```
+
+With `compression: "summary"` the `messages` array contains a single `{ "role": "summary", "content": "..." }` entry.
+With `compression: "chunks"` or `"caveman"` entries have `"role": "chunk"`.
+
+On error: `{ "error": "Conversation not found: conv-456" }`
+
+---
+
+**Usage in Claude Code**
+
 ```
 search my archive for X                  → search_archive({ query: "X" })
 what did I decide about Y                → search_archive({ query: "Y", compression: "summary" })
-show me the full conversation about Z    → search_archive → get_conversation
+show me the full conversation about Z    → search_archive → get_conversation({ conversation_id: "..." })
 ```
 
 ---
