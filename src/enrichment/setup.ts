@@ -57,6 +57,10 @@ async function setupApiProvider(): Promise<boolean> {
   if (preset.name === 'Custom') {
     baseUrl = (await prompt('Base URL (e.g. https://api.openai.com/v1): ')).trim()
     if (!baseUrl) { console.log(chalk.red('Base URL required.')); return false }
+    if (!isValidApiBaseUrl(baseUrl)) {
+      console.log(chalk.red('Base URL must use https:// (or http://localhost for local servers).'))
+      return false
+    }
     model = (await prompt('Model name: ')).trim()
     if (!model) { console.log(chalk.red('Model name required.')); return false }
   }
@@ -202,4 +206,15 @@ export async function runFirstTimeSetup(): Promise<void> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isValidApiBaseUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol === 'https:') return true
+    if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) return true
+    return false
+  } catch {
+    return false
+  }
 }

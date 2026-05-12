@@ -65,6 +65,7 @@ export function saveConfig(config: RchiveConfig): void {
   fs.mkdirSync(CONFIG_DIR, { recursive: true })
   const tmp = CONFIG_PATH + '.tmp'
   fs.writeFileSync(tmp, JSON.stringify(config, null, 2), 'utf8')
+  fs.chmodSync(tmp, 0o600)
   fs.renameSync(tmp, CONFIG_PATH)
 }
 
@@ -102,6 +103,7 @@ export async function saveGroqKey(key: string): Promise<void> {
   if (kt) {
     await kt.setPassword(KEYCHAIN_SERVICE, GROQ_KEY_ACCOUNT, key)
   } else {
+    process.stderr.write('Warning: keytar unavailable — storing API key in plaintext config (~/.rchive/config.json)\n')
     const config = getConfig()
     saveConfig({ ...config, groqApiKey: key })
   }
@@ -121,6 +123,7 @@ export async function saveEnrichmentApiKey(key: string): Promise<void> {
   if (kt) {
     await kt.setPassword(KEYCHAIN_SERVICE, API_KEY_ACCOUNT, key)
   } else {
+    process.stderr.write('Warning: keytar unavailable — storing API key in plaintext config (~/.rchive/config.json)\n')
     const config = getConfig()
     saveConfig({ ...config, enrichmentApiKey: key })
   }

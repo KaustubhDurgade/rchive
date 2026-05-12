@@ -7,8 +7,8 @@ const DECISION_TERMS = /decide|decision|summary|overview|what did i|chose|choice
 const CODE_TERMS = /code|function|class|bug|error|import|library|api|typescript|python|javascript|sql|config/i
 
 export const searchArchiveSchema = z.object({
-  query: z.string().describe('Search query'),
-  limit: z.number().optional().default(5).describe('Number of results (default 5)'),
+  query: z.string().max(500).describe('Search query'),
+  limit: z.number().int().min(1).max(100).optional().default(5).describe('Number of results (default 5, max 100)'),
   compression: z
     .enum(['auto', 'summary', 'chunks', 'caveman', 'full'])
     .optional()
