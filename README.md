@@ -11,8 +11,10 @@ as context in Claude Code and any MCP-compatible client.
 ## Install
 
 ```bash
-npm install -g rchive
+npm install -g github:KaustubhDurgade/rchive
 ```
+
+npm will clone the repo, compile the TypeScript, and link the `rchive` binary automatically. Node 18+ required.
 
 ## Quick start
 
