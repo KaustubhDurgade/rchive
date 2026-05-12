@@ -48,7 +48,7 @@ When returning search results, rchive can shape the content:
 | `auto` | routes to `summary` or `chunks` automatically | general use |
 | `summary` | one-sentence conversation summary | "what did I decide about X?" |
 | `chunks` | the matched chunk text | code, technical queries |
-| `caveman` | dense stripped prose (all filler removed) | fast skim |
+| `caveman` | dense stripped prose (all filler removed) — credit to the caveman writing skill from Claude Code | fast skim |
 | `full` | all messages joined | deep reading |
 
 ---
@@ -88,7 +88,7 @@ rchive
 |---------|-------------|
 | `rchive` | Launch interactive TUI |
 | `rchive import <file.zip>` | Import a ChatGPT or Claude export ZIP |
-| `rchive enrich` | Run the enrichment pipeline (foreground, with progress) |
+| `rchive enrich` | Run the enrichment pipeline (foreground, with progress) — can take hours on large archives, good to run overnight |
 | `rchive setup` | Re-run enrichment setup (change model, add/change Groq key) |
 | `rchive serve [--port n]` | Start the MCP server (default port: 3456) |
 | `rchive status` | Print archive stats (conversations, chunks, DB size) |
