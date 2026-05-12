@@ -1,11 +1,11 @@
 import Database from 'better-sqlite3'
-import { NormalizedConversation } from '../types'
+import { NormalizedConversation } from '../types.js'
 import {
   getConversationByProviderKey,
   insertConversation,
   updateConversation,
   ImportStats,
-} from './queries'
+} from './queries.js'
 
 export function diffAndImport(
   db: Database.Database,

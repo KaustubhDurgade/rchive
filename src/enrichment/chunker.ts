@@ -1,4 +1,4 @@
-import { NormalizedMessage } from '../types'
+import { NormalizedMessage } from '../types.js'
 
 const CHUNK_CHAR_LIMIT = 2000
 

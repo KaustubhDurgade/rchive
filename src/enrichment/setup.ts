@@ -3,8 +3,8 @@ import { execSync, spawn } from 'child_process'
 import readline from 'readline'
 import chalk from 'chalk'
 import ora from 'ora'
-import { getConfig, saveConfig, saveGroqKey, EnrichmentProvider } from '../config'
-import { isOllamaRunning } from './ollama'
+import { getConfig, saveConfig, saveGroqKey, EnrichmentProvider } from '../config.js'
+import { isOllamaRunning } from './ollama.js'
 
 const OLLAMA_TEST_URL = 'http://localhost:11434/api/tags'
 
@@ -58,8 +58,12 @@ async function installOllama(): Promise<boolean> {
       execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe' })
     }
     spinner.succeed('Ollama installed.')
-    spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref()
-    return await waitForOllama()
+    if (platform === 'darwin') {
+      execSync('brew services start ollama', { stdio: 'pipe' })
+    } else {
+      spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' }).unref()
+    }
+    return await waitForOllama(30000)
   } catch (err) {
     spinner.fail('Ollama installation failed.')
     console.error((err as Error).message)

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Box, Text } from 'ink'
 import fs from 'fs'
-import { getDb, getDbPath } from '../../db/schema'
-import { getProviderStats, getTotalStats } from '../../db/queries'
-import { getConfig } from '../../config'
+import { getDb, getDbPath } from '../../db/schema.js'
+import { getProviderStats, getTotalStats } from '../../db/queries.js'
+import { getConfig } from '../../config.js'
 
 function getDbSizeMb(): string {
   try {

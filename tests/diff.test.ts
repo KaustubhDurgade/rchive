@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import * as sqliteVec from 'sqlite-vec'
-import { diffAndImport } from '../src/db/diff'
-import { NormalizedConversation } from '../src/types'
+import { diffAndImport } from '../src/db/diff.js'
+import { NormalizedConversation } from '../src/types.js'
 
 function makeTestDb(): Database.Database {
   const db = new Database(':memory:')

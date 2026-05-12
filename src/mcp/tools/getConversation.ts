@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 import { z } from 'zod'
-import { getConversationById, getMessagesByConversationId } from '../../db/queries'
+import { getConversationById, getMessagesByConversationId } from '../../db/queries.js'
 
 export const getConversationSchema = z.object({
   conversation_id: z.string().describe('Conversation ID'),

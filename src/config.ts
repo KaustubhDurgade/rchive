@@ -66,7 +66,9 @@ let _keytar: typeof import('keytar') | null | undefined = undefined
 async function getKeytar(): Promise<typeof import('keytar') | null> {
   if (_keytar !== undefined) return _keytar
   try {
-    _keytar = await import('keytar')
+    const mod = await import('keytar')
+    // Dynamic import of a CJS module returns { default: module } in ESM
+    _keytar = ((mod as unknown as { default: typeof import('keytar') }).default ?? mod) as typeof import('keytar')
     return _keytar
   } catch {
     _keytar = null

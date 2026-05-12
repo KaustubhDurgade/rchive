@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
-import { ftsSearch, ChunkResult } from './fts'
-import { vectorSearch } from './vector'
+import { ftsSearch, ChunkResult } from './fts.js'
+import { vectorSearch } from './vector.js'
 
 export interface SearchResult {
   chunk_id: string

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import { getConfig } from '../../config'
+import { getConfig } from '../../config.js'
 
 const PROVIDERS = ['chatgpt', 'claude', 'gemini'] as const
 
