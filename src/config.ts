@@ -6,7 +6,7 @@ const CONFIG_DIR = path.join(os.homedir(), '.rchive')
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json')
 
 export type CompressionTier = 'auto' | 'summary' | 'chunks' | 'caveman' | 'full'
-export type EnrichmentProvider = 'ollama' | 'groq'
+export type EnrichmentProvider = 'ollama' | 'api'
 
 export interface RchiveConfig {
   groqApiKey: string
@@ -16,6 +16,9 @@ export interface RchiveConfig {
   enrichmentProvider: EnrichmentProvider | null
   ollamaModel: string | null
   enrichmentAcknowledged: boolean
+  enrichmentApiKey: string
+  enrichmentApiBaseUrl: string
+  enrichmentApiModel: string
   providers: {
     gemini?: {
       accessToken: string
@@ -39,6 +42,9 @@ const DEFAULTS: RchiveConfig = {
   enrichmentProvider: null,
   ollamaModel: null,
   enrichmentAcknowledged: false,
+  enrichmentApiKey: '',
+  enrichmentApiBaseUrl: '',
+  enrichmentApiModel: '',
   providers: {},
 }
 
@@ -78,6 +84,7 @@ async function getKeytar(): Promise<typeof import('keytar') | null> {
 
 const KEYCHAIN_SERVICE = 'rchive'
 const GROQ_KEY_ACCOUNT = 'groq-api-key'
+const API_KEY_ACCOUNT = 'enrichment-api-key'
 
 export async function getGroqKey(): Promise<string> {
   const kt = await getKeytar()
@@ -95,5 +102,24 @@ export async function saveGroqKey(key: string): Promise<void> {
   } else {
     const config = getConfig()
     saveConfig({ ...config, groqApiKey: key })
+  }
+}
+
+export async function getEnrichmentApiKey(): Promise<string> {
+  const kt = await getKeytar()
+  if (kt) {
+    const stored = await kt.getPassword(KEYCHAIN_SERVICE, API_KEY_ACCOUNT)
+    if (stored) return stored
+  }
+  return getConfig().enrichmentApiKey
+}
+
+export async function saveEnrichmentApiKey(key: string): Promise<void> {
+  const kt = await getKeytar()
+  if (kt) {
+    await kt.setPassword(KEYCHAIN_SERVICE, API_KEY_ACCOUNT, key)
+  } else {
+    const config = getConfig()
+    saveConfig({ ...config, enrichmentApiKey: key })
   }
 }

@@ -1,13 +1,19 @@
 import React, { useState } from 'react'
 import { Box, Text, useInput } from 'ink'
 import TextInput from 'ink-text-input'
-import { getConfig, saveConfig, saveGroqKey, CompressionTier } from '../../config.js'
+import { getConfig, saveConfig, saveEnrichmentApiKey, CompressionTier, EnrichmentProvider } from '../../config.js'
 import { getDb } from '../../db/schema.js'
 import { OLLAMA_MODELS } from '../../enrichment/models.js'
 
 const COMPRESSION_TIERS: CompressionTier[] = ['auto', 'summary', 'chunks', 'caveman', 'full']
-const ROWS = ['compression', 'ollamaModel', 'groqKey', 'port', 'reEnrich'] as const
-type Row = typeof ROWS[number]
+const ENRICH_MODES: EnrichmentProvider[] = ['api', 'ollama']
+
+type OllamaRow  = 'compression' | 'enrichMode' | 'ollamaModel' | 'port' | 'reEnrich'
+type ApiRow     = 'compression' | 'enrichMode' | 'apiBaseUrl'  | 'apiKey' | 'apiModel' | 'port' | 'reEnrich'
+type Row = OllamaRow | ApiRow
+
+const ROWS_OLLAMA: OllamaRow[] = ['compression', 'enrichMode', 'ollamaModel', 'port', 'reEnrich']
+const ROWS_API: ApiRow[]       = ['compression', 'enrichMode', 'apiBaseUrl', 'apiKey', 'apiModel', 'port', 'reEnrich']
 
 interface Props {
   onLock: () => void
@@ -16,6 +22,11 @@ interface Props {
 
 export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
   const config = getConfig()
+
+  const [enrichMode, setEnrichMode] = useState<EnrichmentProvider>(
+    config.enrichmentProvider === 'api' ? 'api' : 'ollama'
+  )
+  const activeRows: Row[] = enrichMode === 'api' ? ROWS_API : ROWS_OLLAMA
 
   const [selectedRow, setSelectedRow] = useState(0)
   const [editingRow, setEditingRow] = useState<Row | null>(null)
@@ -28,7 +39,9 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
     Math.max(0, COMPRESSION_TIERS.indexOf(config.defaultCompression))
   )
   const [ollamaModel, setOllamaModel] = useState(config.ollamaModel ?? OLLAMA_MODELS[0].id)
-  const [groqKey, setGroqKey] = useState(config.groqApiKey ?? '')
+  const [apiBaseUrl, setApiBaseUrl] = useState(config.enrichmentApiBaseUrl ?? '')
+  const [apiKey, setApiKey] = useState('')          // never pre-fill from config (keytar)
+  const [apiModel, setApiModel] = useState(config.enrichmentApiModel ?? '')
   const [port, setPort] = useState(String(config.mcpPort))
 
   const [saved, setSaved] = useState(false)
@@ -46,33 +59,29 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
     onUnlock()
   }
 
-  const startEdit = (row: Row) => {
-    setEditingRow(row)
-    onLock()
-  }
-
-  const finishEdit = () => {
-    setEditingRow(null)
-    onUnlock()
-  }
+  const startEdit = (row: Row) => { setEditingRow(row); onLock() }
+  const finishEdit = () => { setEditingRow(null); onUnlock() }
 
   const saveAll = () => {
     const parsed = parseInt(port, 10)
     saveConfig({
       ...getConfig(),
       defaultCompression: COMPRESSION_TIERS[compressionIdx],
-      ollamaModel: ollamaModel || null,
+      enrichmentProvider: enrichMode,
+      ollamaModel: enrichMode === 'ollama' ? (ollamaModel || null) : getConfig().ollamaModel,
+      enrichmentApiBaseUrl: apiBaseUrl,
+      enrichmentApiModel: apiModel,
       mcpPort: Number.isFinite(parsed) ? parsed : config.mcpPort,
-      enrichmentProvider: ollamaModel ? 'ollama' : getConfig().enrichmentProvider,
       enrichmentAcknowledged: true,
     })
-    if (groqKey) saveGroqKey(groqKey).catch(() => {})
+    if (enrichMode === 'api' && apiKey) {
+      saveEnrichmentApiKey(apiKey).catch(() => {})
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
 
   const triggerReEnrich = () => {
-    // Persist current settings first so the pipeline reads the right model
     saveAll()
     const db = getDb()
     db.prepare('UPDATE conversations SET enriched = 0').run()
@@ -91,7 +100,6 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
       else if (key.escape) closeDropdown(false)
       return
     }
-
     if (editingRow !== null) {
       if (key.escape) finishEdit()
       return
@@ -100,12 +108,17 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
     if (key.upArrow) {
       setSelectedRow((r) => Math.max(0, r - 1))
     } else if (key.downArrow) {
-      setSelectedRow((r) => Math.min(ROWS.length - 1, r + 1))
-    } else if (ROWS[selectedRow] === 'compression') {
+      setSelectedRow((r) => Math.min(activeRows.length - 1, r + 1))
+    } else if (activeRows[selectedRow] === 'compression') {
       if (key.leftArrow) setCompressionIdx((i) => (i - 1 + COMPRESSION_TIERS.length) % COMPRESSION_TIERS.length)
       else if (key.rightArrow) setCompressionIdx((i) => (i + 1) % COMPRESSION_TIERS.length)
+    } else if (activeRows[selectedRow] === 'enrichMode') {
+      if (key.leftArrow || key.rightArrow) {
+        setEnrichMode((m) => m === 'api' ? 'ollama' : 'api')
+        setSelectedRow(0)
+      }
     } else if (key.return) {
-      const row = ROWS[selectedRow]
+      const row = activeRows[selectedRow]
       if (row === 'reEnrich') triggerReEnrich()
       else if (row === 'ollamaModel') openDropdown()
       else startEdit(row)
@@ -114,12 +127,8 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
     if (input === 's' && editingRow === null && !modelDropdownOpen) saveAll()
   })
 
-  const maskedKey = groqKey.length > 4
-    ? '•'.repeat(groqKey.length - 4) + groqKey.slice(-4)
-    : groqKey
-
-  const isEditing = editingRow !== null
-  const isLocked = isEditing || modelDropdownOpen
+  const maskedKey = (k: string) => k.length > 4 ? '•'.repeat(k.length - 4) + k.slice(-4) : k
+  const isLocked = editingRow !== null || modelDropdownOpen
 
   const pfx = (idx: number) => (
     <Text color={selectedRow === idx ? 'cyan' : 'gray'}>{selectedRow === idx ? '▶ ' : '  '}</Text>
@@ -134,7 +143,7 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
 
       <Box marginTop={1} flexDirection="column">
 
-        {/* Row 0 — Compression */}
+        {/* Row: Compression */}
         <Box flexDirection="row" marginBottom={1}>
           {pfx(0)}{lbl(0, 'Compression')}
           <Box flexDirection="row">
@@ -148,58 +157,89 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
           </Box>
         </Box>
 
-        {/* Row 1 — Ollama model (dropdown) */}
-        <Box flexDirection="column" marginBottom={1}>
-          <Box flexDirection="row">
-            {pfx(1)}{lbl(1, 'Ollama model')}
-            <Text color="cyan">{ollamaModel}</Text>
-            <Text dimColor>  {modelDropdownOpen ? '▲ ↑↓ Enter Esc' : '▼ Enter to change'}</Text>
-          </Box>
+        {/* Row: Enrichment mode toggle */}
+        <Box flexDirection="row" marginBottom={1}>
+          {pfx(1)}{lbl(1, 'Enrichment')}
+          <Text dimColor>◀ </Text>
+          {ENRICH_MODES.map((m, i) => (
+            <Text key={m} color={m === enrichMode ? 'cyan' : 'gray'} bold={m === enrichMode}>
+              {m}{i < ENRICH_MODES.length - 1 ? '  ' : ''}
+            </Text>
+          ))}
+          <Text dimColor> ▶</Text>
+        </Box>
 
-          {modelDropdownOpen && (
-            <Box marginLeft={4} marginTop={0} flexDirection="column" borderStyle="single" paddingX={1}>
-              {OLLAMA_MODELS.map((m, i) => {
-                const active = i === modelDropdownIdx
-                return (
-                  <Box key={m.id} flexDirection="row">
-                    <Text color={active ? 'cyan' : 'gray'} bold={active}>{active ? '● ' : '  '}</Text>
-                    <Box width={16}><Text color={active ? 'cyan' : 'white'} bold={active}>{m.id}</Text></Box>
-                    <Box width={8}><Text dimColor>{m.size}</Text></Box>
-                    <Box width={8}><Text dimColor>{m.minRam}</Text></Box>
-                    <Text dimColor>{m.note}</Text>
-                  </Box>
-                )
-              })}
+        {/* API mode rows */}
+        {enrichMode === 'api' && (
+          <>
+            <Box flexDirection="row" marginBottom={1}>
+              {pfx(2)}{lbl(2, 'Base URL')}
+              {editingRow === 'apiBaseUrl'
+                ? <TextInput value={apiBaseUrl} onChange={setApiBaseUrl} onSubmit={finishEdit} focus={true} />
+                : <Text color={apiBaseUrl ? 'cyan' : 'gray'}>{apiBaseUrl || 'not set'}</Text>
+              }
             </Box>
-          )}
-        </Box>
+            <Box flexDirection="row" marginBottom={1}>
+              {pfx(3)}{lbl(3, 'API key')}
+              {editingRow === 'apiKey'
+                ? <TextInput value={apiKey} onChange={setApiKey} onSubmit={finishEdit} focus={true} />
+                : <Text color={apiKey ? 'cyan' : 'gray'}>{apiKey ? maskedKey(apiKey) : '(from keychain — Enter to change)'}</Text>
+              }
+            </Box>
+            <Box flexDirection="row" marginBottom={1}>
+              {pfx(4)}{lbl(4, 'Model')}
+              {editingRow === 'apiModel'
+                ? <TextInput value={apiModel} onChange={setApiModel} onSubmit={finishEdit} focus={true} />
+                : <Text color={apiModel ? 'cyan' : 'gray'}>{apiModel || 'not set'}</Text>
+              }
+            </Box>
+          </>
+        )}
 
-        {/* Row 2 — Groq key */}
-        <Box flexDirection="row" marginBottom={1}>
-          {pfx(2)}{lbl(2, 'Groq key')}
-          {editingRow === 'groqKey'
-            ? <TextInput value={groqKey} onChange={setGroqKey} onSubmit={finishEdit} focus={true} />
-            : <Text color={groqKey ? 'cyan' : 'gray'}>{groqKey ? maskedKey : 'not set — optional'}</Text>
-          }
-        </Box>
+        {/* Ollama mode rows */}
+        {enrichMode === 'ollama' && (
+          <Box flexDirection="column" marginBottom={1}>
+            <Box flexDirection="row">
+              {pfx(2)}{lbl(2, 'Ollama model')}
+              <Text color="cyan">{ollamaModel}</Text>
+              <Text dimColor>  {modelDropdownOpen ? '▲ ↑↓ Enter Esc' : '▼ Enter to change'}</Text>
+            </Box>
+            {modelDropdownOpen && (
+              <Box marginLeft={4} marginTop={0} flexDirection="column" borderStyle="single" paddingX={1}>
+                {OLLAMA_MODELS.map((m, i) => {
+                  const active = i === modelDropdownIdx
+                  return (
+                    <Box key={m.id} flexDirection="row">
+                      <Text color={active ? 'cyan' : 'gray'} bold={active}>{active ? '● ' : '  '}</Text>
+                      <Box width={16}><Text color={active ? 'cyan' : 'white'} bold={active}>{m.id}</Text></Box>
+                      <Box width={8}><Text dimColor>{m.size}</Text></Box>
+                      <Box width={8}><Text dimColor>{m.minRam}</Text></Box>
+                      <Text dimColor>{m.note}</Text>
+                    </Box>
+                  )
+                })}
+              </Box>
+            )}
+          </Box>
+        )}
 
-        {/* Row 3 — MCP port */}
+        {/* MCP port */}
         <Box flexDirection="row" marginBottom={1}>
-          {pfx(3)}{lbl(3, 'MCP port')}
+          {pfx(activeRows.indexOf('port'))}{lbl(activeRows.indexOf('port'), 'MCP port')}
           {editingRow === 'port'
             ? <TextInput value={port} onChange={setPort} onSubmit={finishEdit} focus={true} />
             : <Text color="cyan">{port}</Text>
           }
         </Box>
 
-        {/* Row 4 — Re-enrich */}
+        {/* Re-enrich */}
         <Box flexDirection="row">
-          {pfx(4)}{lbl(4, 'Re-enrich all')}
+          {pfx(activeRows.indexOf('reEnrich'))}{lbl(activeRows.indexOf('reEnrich'), 'Re-enrich all')}
           {enrichStatus === 'started'
             ? <Text color="green">● Enriching in background — check Status tab</Text>
             : enrichStatus === 'error'
-              ? <Text color="red">✗ Failed to start — is Ollama running?</Text>
-              : <Text dimColor>re-process all conversations with current model</Text>
+              ? <Text color="red">✗ Failed to start — check setup</Text>
+              : <Text dimColor>re-process all conversations</Text>
           }
         </Box>
 
@@ -210,9 +250,9 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
           ? <Text color="green">✓ Saved</Text>
           : modelDropdownOpen
             ? <Text dimColor>↑↓ select model  ·  Enter confirm  ·  Esc cancel</Text>
-            : isEditing
+            : isLocked
               ? <Text dimColor>Enter to confirm  ·  Esc to cancel</Text>
-              : <Text dimColor>↑↓ navigate  ·  Enter to edit/open  ·  S to save  ·  Tab to switch</Text>
+              : <Text dimColor>↑↓ navigate  ·  ◀▶ toggle mode  ·  Enter to edit  ·  S to save  ·  Tab to switch tabs</Text>
         }
       </Box>
     </Box>

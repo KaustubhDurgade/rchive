@@ -6,11 +6,12 @@ import ora from 'ora'
 import { randomUUID } from 'crypto'
 import { getDb } from '../db/schema.js'
 import { getUnenrichedConversations, getMessagesByConversationId, markEnriched } from '../db/queries.js'
-import { getConfig, getGroqKey } from '../config.js'
+import { getConfig, getGroqKey, getEnrichmentApiKey } from '../config.js'
 import { chunkConversation } from './chunker.js'
 import { embed } from './embeddings.js'
 import { summarizeConversation } from './groq.js'
 import { enrichChunkOllama, summarizeConversationOllama, isModelPulled, pullModelWithProgress } from './ollama.js'
+import { enrichChunkApi, summarizeConversationApi } from './api-client.js'
 import { runFirstTimeSetup } from './setup.js'
 import { NormalizedMessage } from '../types.js'
 
@@ -40,11 +41,10 @@ export async function runEnrichmentPipeline(foreground: boolean, skipSetup = fal
   if (!skipSetup) await runFirstTimeSetup()
 
   const config = getConfig()
-  const model = config.ollamaModel
   const log = makeLog(foreground)
 
-  if (!model) {
-    log('[enrichment] No Ollama model configured. Run: rchive setup')
+  if (!config.enrichmentProvider) {
+    log('[enrichment] No enrichment provider configured. Run: rchive setup')
     return false
   }
 
@@ -52,24 +52,37 @@ export async function runEnrichmentPipeline(foreground: boolean, skipSetup = fal
   const pending = getUnenrichedConversations(db)
   if (pending.length === 0) return true
 
-  // Pull model on first use (or after model change)
-  const pulled = await isModelPulled(model)
-  if (!pulled) {
-    const pullSpinner = foreground ? ora(`Pulling ${model} (first use)...`).start() : null
-    try {
-      await pullModelWithProgress(model, (pct, status) => {
-        if (!pullSpinner) return
-        if (pct !== null) pullSpinner.text = `Pulling ${model}... ${pct}%`
-        else if (status && status !== 'success') pullSpinner.text = `Pulling ${model}: ${status}`
-      })
-      pullSpinner?.succeed(`${model} ready.`)
-    } catch (err) {
-      pullSpinner?.fail(`Failed to pull ${model}: ${(err as Error).message}`)
-      log(`[enrichment] Cannot proceed: ${(err as Error).message}`)
+  if (config.enrichmentProvider === 'ollama') {
+    const model = config.ollamaModel
+    if (!model) {
+      log('[enrichment] No Ollama model configured. Run: rchive setup')
+      return false
+    }
+    const pulled = await isModelPulled(model)
+    if (!pulled) {
+      const pullSpinner = foreground ? ora(`Pulling ${model} (first use)...`).start() : null
+      try {
+        await pullModelWithProgress(model, (pct, status) => {
+          if (!pullSpinner) return
+          if (pct !== null) pullSpinner.text = `Pulling ${model}... ${pct}%`
+          else if (status && status !== 'success') pullSpinner.text = `Pulling ${model}: ${status}`
+        })
+        pullSpinner?.succeed(`${model} ready.`)
+      } catch (err) {
+        pullSpinner?.fail(`Failed to pull ${model}: ${(err as Error).message}`)
+        log(`[enrichment] Cannot proceed: ${(err as Error).message}`)
+        return false
+      }
+    }
+  } else {
+    const apiKey = await getEnrichmentApiKey()
+    if (!apiKey || !config.enrichmentApiBaseUrl || !config.enrichmentApiModel) {
+      log('[enrichment] API enrichment not fully configured. Run: rchive setup')
       return false
     }
   }
 
+  const resolvedApiKey = config.enrichmentProvider === 'api' ? await getEnrichmentApiKey() : ''
   const total = pending.length
   const spinner = foreground ? ora('Starting…').start() : null
   let done = 0
@@ -78,7 +91,7 @@ export async function runEnrichmentPipeline(foreground: boolean, skipSetup = fal
     for (const conv of pending) {
       const title = trunc(conv.title ?? conv.id, 40)
       try {
-        await enrichOne(db, conv.id, config, log, (chunkDone, chunkTotal) => {
+        await enrichOne(db, conv.id, config, log, resolvedApiKey, (chunkDone, chunkTotal) => {
           if (!spinner) return
           const convBar = bar(done, total, 20)
           const chunkBar = bar(chunkDone, chunkTotal, 12)
@@ -113,6 +126,7 @@ async function enrichOne(
   conversationId: string,
   config: ReturnType<typeof getConfig>,
   log: (msg: string) => void,
+  apiKey: string,
   onChunkProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const rows = getMessagesByConversationId(db, conversationId)
@@ -128,17 +142,24 @@ async function enrichOne(
   }
 
   const chunks = chunkConversation(messages)
-  const model = config.ollamaModel ?? 'qwen2.5:3b'
+  const useApi = config.enrichmentProvider === 'api'
+  const ollamaModel = config.ollamaModel ?? 'qwen2.5:3b'
+  const { enrichmentApiBaseUrl: baseUrl, enrichmentApiModel: apiModel } = config
 
   const existingSummary = (
     db.prepare('SELECT summary FROM conversations WHERE id = ?').get(conversationId) as { summary: string | null }
   )?.summary
 
   if (!existingSummary) {
-    const groqKey = await getGroqKey()
-    const convSummary = groqKey
-      ? await summarizeConversation(chunks, groqKey)
-      : await summarizeConversationOllama(chunks, model)
+    let convSummary: string
+    if (useApi) {
+      convSummary = await summarizeConversationApi(chunks, apiKey, baseUrl, apiModel)
+    } else {
+      const groqKey = await getGroqKey()
+      convSummary = groqKey
+        ? await summarizeConversation(chunks, groqKey)
+        : await summarizeConversationOllama(chunks, ollamaModel)
+    }
     if (convSummary) {
       db.prepare('UPDATE conversations SET summary = ? WHERE id = ?').run(convSummary, conversationId)
     }
@@ -152,7 +173,9 @@ async function enrichOne(
   for (let i = 0; i < chunks.length; i++) {
     onChunkProgress?.(i, chunks.length)
     const [enriched, embedding] = await Promise.all([
-      enrichChunkOllama(chunks[i], model),
+      useApi
+        ? enrichChunkApi(chunks[i], apiKey, baseUrl, apiModel)
+        : enrichChunkOllama(chunks[i], ollamaModel),
       embed(chunks[i]),
     ])
     const embeddingBuf = Buffer.from(embedding.buffer)
