@@ -105,10 +105,8 @@ export function QueryScreen(): React.JSX.Element {
       })}
 
       <Box marginTop={1}>
-        {mode === 'input' ? (
-          <Text dimColor>Enter to search  |  Tab to switch screens</Text>
-        ) : (
-          <Text dimColor>↑↓ navigate  ·  Enter expand  ·  Esc or / to edit query  ·  Tab to switch screens</Text>
+        {mode === 'results' && (
+          <Text dimColor>↑↓ navigate  ·  Enter expand  ·  Esc or / to edit query</Text>
         )}
       </Box>
     </Box>

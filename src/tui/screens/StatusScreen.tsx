@@ -86,12 +86,21 @@ export function StatusScreen(): React.JSX.Element {
 
       <Box marginTop={1} flexDirection="column">
         <Text>{totals.conversations.toLocaleString()} conversations · {totals.chunks.toLocaleString()} chunks · {getDbSizeMb()}</Text>
-        <Text>Model: <Text color="cyan">{config.ollamaModel ?? 'not configured'}</Text></Text>
+        <Text>
+          Enrichment:{' '}
+          <Text color="cyan">
+            {config.enrichmentProvider === 'api'
+              ? `api · ${config.enrichmentApiModel || 'no model'} · ${config.enrichmentRpm ?? 20} RPM`
+              : config.enrichmentProvider === 'ollama'
+                ? `ollama · ${config.ollamaModel ?? 'no model'}`
+                : 'not configured'}
+          </Text>
+        </Text>
         <Text dimColor>MCP: localhost:{config.mcpPort}</Text>
       </Box>
 
       <Box marginTop={1}>
-        <Text dimColor>Auto-refreshes every 2s  |  Tab to switch screens</Text>
+        <Text dimColor>Refreshes every 2s</Text>
       </Box>
     </Box>
   )

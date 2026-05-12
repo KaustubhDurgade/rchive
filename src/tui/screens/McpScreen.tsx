@@ -76,7 +76,7 @@ export function McpScreen(): React.JSX.Element {
       </Box>
 
       <Box marginTop={1}>
-        <Text dimColor>Status auto-refreshes every 3s  |  Tab to switch screens</Text>
+        <Text dimColor>Refreshes every 3s</Text>
       </Box>
     </Box>
   )

@@ -117,16 +117,17 @@ export function getMessagesByConversationId(
 
 export function getProviderStats(
   db: Database.Database
-): { provider: string; total: number; last_imported_at: number | null; pending: number }[] {
+): { provider: string; total: number; last_imported_at: number | null; latest_conversation_at: number | null; pending: number }[] {
   return db.prepare(`
     SELECT
       provider,
       COUNT(*) as total,
       MAX(last_imported_at) as last_imported_at,
+      MAX(updated_at) as latest_conversation_at,
       SUM(CASE WHEN enriched = 0 THEN 1 ELSE 0 END) as pending
     FROM conversations
     GROUP BY provider
-  `).all() as { provider: string; total: number; last_imported_at: number | null; pending: number }[]
+  `).all() as { provider: string; total: number; last_imported_at: number | null; latest_conversation_at: number | null; pending: number }[]
 }
 
 export function getTotalStats(db: Database.Database): { conversations: number; chunks: number } {

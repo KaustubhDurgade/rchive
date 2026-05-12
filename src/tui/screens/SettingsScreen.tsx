@@ -261,7 +261,7 @@ export function SettingsScreen({ onLock, onUnlock }: Props): React.JSX.Element {
             ? <Text dimColor>↑↓ select model  ·  Enter confirm  ·  Esc cancel</Text>
             : isLocked
               ? <Text dimColor>Enter to confirm  ·  Esc to cancel</Text>
-              : <Text dimColor>↑↓ navigate  ·  ◀▶ toggle mode  ·  Enter to edit  ·  S to save  ·  Tab to switch tabs</Text>
+              : <Text dimColor>↑↓ navigate  ·  ◀▶ toggle  ·  Enter to edit  ·  S to save</Text>
         }
       </Box>
     </Box>
