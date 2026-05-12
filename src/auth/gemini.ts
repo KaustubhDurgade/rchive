@@ -1,1 +1,2 @@
-// Implemented in Phase 7 (pending user decision on Gemini API availability)
+// TODO: Implement OAuth flow when Google exposes a public API for Gemini conversation history.
+export {}
