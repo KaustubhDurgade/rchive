@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Text } from 'ink'
+import { Box, Text, useInput } from 'ink'
 import net from 'net'
 import { getConfig } from '../../config.js'
+import { killServerOnPort } from '../../mcp/kill.js'
 
 function checkPortOpen(port: number): Promise<boolean> {
   return new Promise((resolve) => {
@@ -18,6 +19,17 @@ export function McpScreen(): React.JSX.Element {
   const config = getConfig()
   const endpoint = `http://localhost:${config.mcpPort}/mcp`
   const [running, setRunning] = useState<boolean | null>(null)
+  const [stopMsg, setStopMsg] = useState<string | null>(null)
+
+  useInput((input) => {
+    if (input === 'k' && running) {
+      const result = killServerOnPort(config.mcpPort)
+      if (result === 'killed') setStopMsg('Server stopped.')
+      else if (result === 'not-running') setStopMsg('Already not running.')
+      else setStopMsg('Failed to stop server.')
+      setTimeout(() => setStopMsg(null), 3000)
+    }
+  })
 
   useEffect(() => {
     let active = true
@@ -75,9 +87,15 @@ export function McpScreen(): React.JSX.Element {
         </Box>
       </Box>
 
-      <Box marginTop={1}>
+      <Box marginTop={1} flexDirection="row" gap={2}>
         <Text dimColor>Refreshes every 3s</Text>
+        {running && <Text dimColor>  k stop server</Text>}
       </Box>
+      {stopMsg && (
+        <Box marginTop={0}>
+          <Text color="yellow">{stopMsg}</Text>
+        </Box>
+      )}
     </Box>
   )
 }

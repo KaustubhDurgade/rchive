@@ -130,6 +130,24 @@ program
     console.log(chalk.gray(`DB: ${getDbPath()}`))
   })
 
+// --- stop ---
+program
+  .command('stop')
+  .description('Stop the running MCP server')
+  .action(async () => {
+    const { getConfig } = await import('./config.js')
+    const { killServerOnPort } = await import('./mcp/kill.js')
+    const port = getConfig().mcpPort
+    const result = killServerOnPort(port)
+    if (result === 'killed') {
+      console.log(chalk.green(`✓ MCP server on port ${port} stopped.`))
+    } else if (result === 'not-running') {
+      console.log(chalk.yellow(`No MCP server found on port ${port}.`))
+    } else {
+      console.error(chalk.red(`Failed to stop server on port ${port}.`))
+    }
+  })
+
 // --- sync ---
 program
   .command('sync')

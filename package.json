@@ -1,6 +1,6 @@
 {
   "name": "@kaustubhdurgade/rchive",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Local-first AI conversation archive — import ChatGPT/Claude exports, enrich with topics and embeddings, and query via MCP",
   "type": "module",
   "bin": {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text, useApp, useInput } from 'ink'
 import { AuthScreen } from './screens/AuthScreen.js'
 import { SettingsScreen } from './screens/SettingsScreen.js'
 import { StatusScreen } from './screens/StatusScreen.js'
@@ -17,11 +17,16 @@ const LABELS: Record<Screen, string> = {
 }
 
 export function App(): React.JSX.Element {
+  const { exit } = useApp()
   const [screen, setScreen] = useState<Screen>('status')
   const [navLocked, setNavLocked] = useState(false)
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
     if (navLocked) return
+    if (input === 'q' || key.escape) {
+      exit()
+      return
+    }
     if (key.tab && !key.shift) {
       const idx = SCREENS.indexOf(screen)
       setScreen(SCREENS[(idx + 1) % SCREENS.length])
@@ -43,7 +48,7 @@ export function App(): React.JSX.Element {
           </Box>
         ))}
         <Box flexGrow={1} justifyContent="flex-end">
-          <Text dimColor>Tab/⇧Tab switch  ^C quit</Text>
+          <Text dimColor>Tab/⇧Tab switch  q/Esc/^C quit</Text>
         </Box>
       </Box>
 
