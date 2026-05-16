@@ -62,6 +62,57 @@ program
     }
   })
 
+// --- import-share ---
+program
+  .command('import-share <url>')
+  .description('Import a Claude or ChatGPT share URL (opens a visible browser)')
+  .action(async (url: string) => {
+    const { importShareUrl } = await import('./parsers/shareUrl.js')
+    console.log(chalk.gray('Opening browser... solve any Cloudflare check, then wait for the page to load.'))
+    let conversation: NormalizedConversation
+    try {
+      conversation = await importShareUrl(url)
+    } catch (err) {
+      console.error(chalk.red(`Import failed: ${(err as Error).message}`))
+      process.exit(1)
+    }
+    const db = getDb()
+    const stats = diffAndImport(db, [conversation])
+    console.log(
+      chalk.green('✓') +
+        ` Imported "${chalk.bold(conversation.title)}": ` +
+        `${chalk.bold(stats.newCount)} new  |  ${chalk.bold(stats.updatedCount)} updated  |  ${chalk.bold(stats.skippedCount)} skipped`
+    )
+    if (stats.newCount > 0 || stats.updatedCount > 0) {
+      console.log(chalk.gray('Run ' + chalk.bold('rchive enrich') + ' to process new conversations.'))
+    }
+  })
+
+// --- import-claudecode ---
+program
+  .command('import-claudecode')
+  .description('Import Claude Code project sessions from ~/.claude/projects')
+  .option('-p, --path <dir>', 'Custom projects directory')
+  .action(async (opts: { path?: string }) => {
+    const { parseClaudeCodeProjects } = await import('./parsers/claudecode.js')
+    console.log(chalk.gray('Scanning Claude Code projects...'))
+    const conversations = await parseClaudeCodeProjects(opts.path)
+    if (!conversations.length) {
+      console.log(chalk.yellow('No Claude Code sessions found.'))
+      return
+    }
+    const db = getDb()
+    const stats = diffAndImport(db, conversations)
+    console.log(
+      chalk.green('✓') +
+        ` Imported ${chalk.bold(conversations.length)} sessions: ` +
+        `${chalk.bold(stats.newCount)} new  |  ${chalk.bold(stats.updatedCount)} updated  |  ${chalk.bold(stats.skippedCount)} skipped`
+    )
+    if (stats.newCount > 0 || stats.updatedCount > 0) {
+      console.log(chalk.gray('Run ' + chalk.bold('rchive enrich') + ' to process new conversations.'))
+    }
+  })
+
 // --- setup ---
 program
   .command('setup')

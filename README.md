@@ -30,9 +30,12 @@
 
 ┌─ Search ──────────────────────────────────────────────────────────┐
 │  query                                                            │
-│    ──▶ FTS5 full-text search        (weight 0.4)                  │
-│    ──▶ nomic-embed + sqlite-vec     (weight 0.6)                  │
-│    ──▶ merged, deduped, ranked                                    │
+│    ──▶ sanitize       strip FTS5-unsafe punctuation, prefix-match │
+│    ──▶ FTS5           keyword search                              │
+│    ──▶ nomic-embed    + sqlite-vec cosine similarity              │
+│    ──▶ RRF fusion     reciprocal-rank fusion of both modalities   │
+│    ──▶ group          one result per conversation (best chunk)    │
+│    ──▶ title fallback un-enriched conversations matched by title  │
 │    ──▶ content shaped by compression tier                         │
 └───────────────────────────────────────────────────────────────────┘
 
@@ -185,7 +188,7 @@ The MCP tab in the TUI shows the exact endpoint and copy-paste snippets for all 
 
 #### `search_archive`
 
-Hybrid FTS5 + vector search across all enriched conversations.
+Hybrid FTS5 + vector search across all enriched conversations. The query is sanitized for FTS5 (punctuation stripped, prefix-matched per token) so natural-language queries like `what did I decide about auth?` don't crash. Results from FTS5 and vector search are merged with **Reciprocal Rank Fusion** (k=60) and, by default, collapsed to one result per conversation (best-scoring chunk wins, `match_count` records how many chunks matched). If results are sparse, un-enriched conversations are surfaced via a title/summary `LIKE` fallback so they remain discoverable.
 
 **Input**
 
@@ -194,6 +197,7 @@ Hybrid FTS5 + vector search across all enriched conversations.
 | `query` | `string` | required | Search query in natural language |
 | `limit` | `number` | `5` | Number of results to return |
 | `compression` | `"auto" \| "summary" \| "chunks" \| "caveman" \| "full"` | `"auto"` | Content shape (see compression tiers above) |
+| `group_by_conversation` | `boolean` | `true` | Collapse multiple matching chunks into one result per conversation |
 
 `auto` routing: queries matching decision/overview keywords (`decide`, `chose`, `conclusion`, etc.) resolve to `summary`; code/technical keywords (`function`, `bug`, `api`, `typescript`, etc.) resolve to `chunks`; everything else defaults to `chunks`.
 
@@ -210,11 +214,15 @@ Hybrid FTS5 + vector search across all enriched conversations.
       "created_at": 1700000000,
       "content": "...",
       "topics": ["auth", "jwt", "typescript"],
-      "relevance_score": 0.87
+      "relevance_score": 0.031,
+      "match_count": 3,
+      "is_title_match": false
     }
   ]
 }
 ```
+
+`match_count` (optional) indicates how many chunks from this conversation matched when grouping is enabled. `is_title_match: true` flags fallback hits on un-enriched conversations — their `content` is the conversation summary (or a placeholder) rather than chunk text.
 
 On error: `{ "error": "message", "results": [] }`
 

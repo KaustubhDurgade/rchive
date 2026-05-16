@@ -1,6 +1,6 @@
 {
   "name": "@kaustubhdurgade/rchive",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Local-first AI conversation archive — import ChatGPT/Claude exports, enrich with topics and embeddings, and query via MCP",
   "type": "module",
   "bin": {
@@ -63,6 +63,7 @@
     "ink-text-input": "^6.0.0",
     "keytar": "^7.9.0",
     "ora": "^9.4.0",
+    "puppeteer-core": "^25.0.2",
     "react": "^19.2.6",
     "sqlite-vec": "^0.1.9"
   },

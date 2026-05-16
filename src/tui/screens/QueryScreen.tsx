@@ -38,7 +38,9 @@ export function QueryScreen(): React.JSX.Element {
     setError(null)
     try {
       const db = getDb()
-      const found = await hybridSearch(db, query, 10, config.defaultCompression)
+      const found = await hybridSearch(db, query, 10, config.defaultCompression, {
+        groupByConversation: true,
+      })
       setResults(found)
       setSelectedIndex(0)
       setExpanded(null)
@@ -88,6 +90,12 @@ export function QueryScreen(): React.JSX.Element {
                   <Text bold color={isSelected ? 'white' : undefined}>{r.conversation_title}</Text>
                   <Text dimColor> [{r.provider}]</Text>
                   <Text dimColor> · {new Date(r.created_at * 1000).toLocaleDateString()}</Text>
+                  {r.match_count && r.match_count > 1 && (
+                    <Text dimColor> · {r.match_count} matches</Text>
+                  )}
+                  {r.is_title_match && (
+                    <Text color="yellow"> · title match (un-enriched)</Text>
+                  )}
                 </Box>
                 <Text dimColor>{r.content.slice(0, 200)}{r.content.length > 200 ? '…' : ''}</Text>
                 {isExpanded && (

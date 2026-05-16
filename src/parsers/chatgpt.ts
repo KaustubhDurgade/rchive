@@ -72,6 +72,20 @@ function parseMessages(
   return messages
 }
 
+export function parseChatGPTConversation(raw: unknown): NormalizedConversation | null {
+  const conv = raw as ChatGPTConversation
+  if (!conv?.id || !conv?.mapping || !conv?.current_node) return null
+  const messages = parseMessages(conv.mapping, conv.current_node)
+  return {
+    provider: 'chatgpt',
+    provider_conversation_id: conv.id,
+    title: conv.title ?? 'Untitled',
+    created_at: Math.floor(conv.create_time),
+    updated_at: Math.floor(conv.update_time),
+    messages,
+  }
+}
+
 export function parseChatGPTZip(filePath: string): NormalizedConversation[] {
   const zip = new AdmZip(filePath)
   const entry = zip.getEntry('conversations.json')
@@ -82,16 +96,8 @@ export function parseChatGPTZip(filePath: string): NormalizedConversation[] {
 
   for (const conv of raw) {
     try {
-      if (!conv.id || !conv.mapping || !conv.current_node) continue
-      const messages = parseMessages(conv.mapping, conv.current_node)
-      results.push({
-        provider: 'chatgpt',
-        provider_conversation_id: conv.id,
-        title: conv.title ?? 'Untitled',
-        created_at: Math.floor(conv.create_time),
-        updated_at: Math.floor(conv.update_time),
-        messages,
-      })
+      const normalized = parseChatGPTConversation(conv)
+      if (normalized) results.push(normalized)
     } catch (err) {
       console.warn(`[chatgpt] Skipping conversation ${conv.id}:`, err)
     }

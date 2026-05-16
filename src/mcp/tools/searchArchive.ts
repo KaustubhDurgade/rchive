@@ -14,6 +14,11 @@ export const searchArchiveSchema = z.object({
     .optional()
     .default('auto')
     .describe('Content compression tier'),
+  group_by_conversation: z
+    .boolean()
+    .optional()
+    .default(true)
+    .describe('Collapse multiple matching chunks into a single result per conversation (default true)'),
 })
 
 export async function handleSearchArchive(
@@ -22,13 +27,17 @@ export async function handleSearchArchive(
 ): Promise<{ results: SearchArchiveResult[]; _note?: string } | { error: string; results: [] }> {
   try {
     const compression = resolveCompression(input.query, input.compression ?? 'auto')
-    const results = await hybridSearch(db, input.query, input.limit ?? 5, compression)
+    const results = await hybridSearch(db, input.query, input.limit ?? 5, compression, {
+      groupByConversation: input.group_by_conversation ?? true,
+    })
 
     const limit = input.limit ?? 5
     const mapped = results.map((r) => {
       let content = r.content
 
-      if (compression === 'full') {
+      if (r.is_title_match) {
+        // Title-only match (un-enriched fallback) — leave content as-is.
+      } else if (compression === 'full') {
         const messages = getMessagesByConversationId(db, r.conversation_id)
         content = messages
           .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
@@ -50,6 +59,8 @@ export async function handleSearchArchive(
         content,
         topics: r.topics,
         relevance_score: r.relevance_score,
+        match_count: r.match_count,
+        is_title_match: r.is_title_match,
       }
     })
 
@@ -80,6 +91,8 @@ interface SearchArchiveResult {
   content: string
   topics: string[]
   relevance_score: number
+  match_count?: number
+  is_title_match?: boolean
 }
 
 function resolveCompression(query: string, compression: string): string {

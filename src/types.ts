@@ -1,4 +1,4 @@
-export type Provider = 'chatgpt' | 'claude' | 'gemini'
+export type Provider = 'chatgpt' | 'claude' | 'gemini' | 'claudecode'
 export type Role = 'user' | 'assistant'
 
 export interface NormalizedMessage {

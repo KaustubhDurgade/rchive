@@ -23,29 +23,34 @@ function parseIso(str: string): number {
   return Math.floor(Date.parse(str) / 1000)
 }
 
+export function parseClaudeConversation(raw: unknown): NormalizedConversation | null {
+  const conv = raw as ClaudeConversation
+  if (!conv?.uuid || !conv?.chat_messages) return null
+  const messages: NormalizedMessage[] = []
+  for (const msg of conv.chat_messages) {
+    if (!msg.text || !msg.text.trim()) continue
+    messages.push({
+      role: msg.sender === 'human' ? 'user' : 'assistant',
+      content: msg.text,
+      created_at: parseIso(msg.created_at),
+    })
+  }
+  return {
+    provider: 'claude',
+    provider_conversation_id: conv.uuid,
+    title: conv.name ?? 'Untitled',
+    summary: conv.summary || undefined,
+    created_at: parseIso(conv.created_at),
+    updated_at: parseIso(conv.updated_at),
+    messages,
+  }
+}
+
 function parseConversations(raw: unknown[]): Map<string, NormalizedConversation> {
   const map = new Map<string, NormalizedConversation>()
   for (const item of raw) {
-    const conv = item as ClaudeConversation
-    if (!conv.uuid || !conv.chat_messages) continue
-    const messages: NormalizedMessage[] = []
-    for (const msg of conv.chat_messages) {
-      if (!msg.text || !msg.text.trim()) continue
-      messages.push({
-        role: msg.sender === 'human' ? 'user' : 'assistant',
-        content: msg.text,
-        created_at: parseIso(msg.created_at),
-      })
-    }
-    map.set(conv.uuid, {
-      provider: 'claude',
-      provider_conversation_id: conv.uuid,
-      title: conv.name ?? 'Untitled',
-      summary: conv.summary || undefined,
-      created_at: parseIso(conv.created_at),
-      updated_at: parseIso(conv.updated_at),
-      messages,
-    })
+    const normalized = parseClaudeConversation(item)
+    if (normalized) map.set(normalized.provider_conversation_id, normalized)
   }
   return map
 }
